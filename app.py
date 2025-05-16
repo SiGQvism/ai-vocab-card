@@ -163,12 +163,12 @@ if mode == "学習モード":
 
     c1, c2 = st.columns(2)
     with c1:
-        if big_button("覚えた", key="ok"):
+        if big_button("覚えた", key="learned_btn_"):
             learned.append(current)
             save_learned(learned)
             st.rerun()         # ← ここ
     with c2:
-        big_button("覚えていない", key="ng")
+        big_button("覚えていない", key="retry_btn_")
 
 else:  # 復習モード
     if not learned:
@@ -181,9 +181,9 @@ else:  # 復習モード
 
     c1, c2 = st.columns(2)
     with c1:
-        if big_button("覚え直し", key="relearn"):
+        if big_button("覚え直し", key="relearn_btn_"):
             learned.remove(target)
             save_learned(learned)
             st.rerun()         # ← ここ
     with c2:
-        big_button("覚えていない", key="review_ng")
+        big_button("覚えていない", key="review_ng_btn_")
