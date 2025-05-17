@@ -1,2 +1,0 @@
-streamlit>=1.32
-notion-client>=2.2.0
