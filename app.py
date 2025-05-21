@@ -68,29 +68,35 @@ notion = Client(auth=NOTION_TOKEN)
 
 
 def fetch_notion_rows() -> List[Dict[str, str]]:
-    """Notion DB → [{word, meaning, memo}, …]"""
-    try:
-        results = notion.databases.query(database_id=NOTION_DB_ID)["results"]
-    except APIResponseError as e:
-        body = e.body if isinstance(e.body, dict) else {}
-        msg  = body.get("message", str(e))
-        st.error(f"❌ {e.status} – {e.code}\n{msg}")
-        st.stop()
-
+    """DB 全行を [{word, meaning, memo}, …] で返す（100行超にも対応）"""
     rows: List[Dict[str, str]] = []
-    for r in results:
-        rows.append(
-            {
-                "word":    r["properties"][PROP_WORD]["title"][0]["plain_text"],
-                "meaning": r["properties"][PROP_MEAN]["rich_text"][0]["plain_text"],
-                "memo": (
-                    r["properties"][PROP_MEMO]["rich_text"][0]["plain_text"]
-                    if r["properties"][PROP_MEMO]["rich_text"]
-                    else ""
-                ),
-            }
+    next_cursor: str | None = None
+
+    while True:
+        resp = notion.databases.query(
+            database_id=NOTION_DB_ID,
+            start_cursor=next_cursor,
+            page_size=100,
         )
+        for r in resp["results"]:
+            props = r["properties"]
+            # --- 必須フィールドが空ならスキップ ------------------------
+            if not props[PROP_WORD]["title"]:
+                continue
+            rows.append({
+                "word":    props[PROP_WORD]["title"][0]["plain_text"],
+                "meaning": props[PROP_MEAN]["rich_text"][0]["plain_text"]
+                           if props[PROP_MEAN]["rich_text"] else "",
+                "memo":    props[PROP_MEMO]["rich_text"][0]["plain_text"]
+                           if props[PROP_MEMO]["rich_text"] else "",
+            })
+        # 次のページが無ければ終了
+        if not resp.get("has_more"):
+            break
+        next_cursor = resp["next_cursor"]
+
     return rows
+
 
 
 def sync_from_notion() -> Dict[str, Dict[str, str]]:
@@ -111,6 +117,10 @@ if "words" not in st.session_state:
 # ドロップダウン用
 st.session_state["all_words_for_select"] = sorted(st.session_state["words"])
 
+# ── 登録単語数をサイドバーに表示 ──────────────────────
+total   = len(st.session_state["words"])
+learned = len(st.session_state["learned"])
+st.sidebar.markdown(f"### 📊 進捗\n- 登録: **{total}** 単語\n- 覚えた: **{learned}**")
 
 # ──────────────────────────── サイドバー ───────────────────────────
 actions = sidebar()
